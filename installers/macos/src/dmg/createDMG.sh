@@ -18,34 +18,33 @@
 
 set -e
 
-# Creating dmg and .background folders
-mkdir dmg
-mkdir -p dmg/.background
+for archive in ../../../../product/target/products/ApacheDirectoryStudio-*-macosx.*.tar.gz; do
 
-# Copy the application
-tar -xf ../../../product/target/products/ApacheDirectoryStudio-*-macosx.cocoa.x86_64.tar.gz -C dmg
+    echo "Building ${archive//tar.gz/dmg}"
 
-# Copy legal files
-cp dmg/ApacheDirectoryStudio.app/Contents/Eclipse/LICENSE dmg/
-cp dmg/ApacheDirectoryStudio.app/Contents/Eclipse/NOTICE dmg/
+    # cleanup
+    rm -rf dmg/* TMP*dmg
 
-# Move background image
-mv background.png dmg/.background/
+    # prepare DMG content
+    mkdir -p dmg/.background/
+    cp -av background.png dmg/.background/
+    cp -av DS_Store dmg/.DS_Store
+    ln -sv /Applications dmg/Applications
 
-# Move .DS_Store file
-mv DS_Store dmg/.DS_Store
+    # Copy the application
+    tar -xvf $archive -C dmg
 
-# Creating symbolic link to Applications folder
-ln -s /Applications dmg/Applications
+    # Codesign the App and verify
+    if [[ $1 =~ -s|--sign ]] && [[ $2 =~ .+ ]]; then
+        echo "Signing with ID: $2"
+        codesign --verbose --force --deep --timestamp --options runtime --entitlements entitlements.plist -s "$2" dmg/ApacheDirectoryStudio.app
+        codesign -dv --verbose=4 dmg/ApacheDirectoryStudio.app
+    fi
 
-# Codesign the App with the ASF key, and verify
-codesign --force --deep --timestamp --options runtime --entitlements entitlements.plist -s ${APPLE_SIGNING_ID} dmg/ApacheDirectoryStudio.app
-codesign -dv --verbose=4 dmg/ApacheDirectoryStudio.app
+    # Creating the disk image
+    hdiutil create -verbose -srcfolder dmg/ -volname "ApacheDirectoryStudio" -o TMP.dmg
+    hdiutil convert -verbose -format UDZO TMP.dmg -o ${archive//tar.gz/dmg}
 
-# Creating the disk image
-hdiutil create -srcfolder dmg/ -volname "ApacheDirectoryStudio" -o TMP.dmg
-hdiutil convert -format UDZO TMP.dmg -o ApacheDirectoryStudio-${version}-macosx.cocoa.x86_64.dmg
+    rm -rf dmg/* TMP*dmg
 
-# Cleaning
-#rm TMP.dmg
-#rm -rf dmg/
+done

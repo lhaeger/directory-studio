@@ -18,4 +18,27 @@
 
 # This script do a full build of Studio (including the MANIFEST generation and the P2 local repository construction)
 
+# Building requires Java 11 or 17
+if [ uname -o =="Darwin" ]; then
+    if /usr/libexec/java_home -v 11 -a $(uname -m) -F 2>/dev/null; then
+        export JAVA_HOME=$(/usr/libexec/java_home -v 11 -a arm64 -F | head -n1)
+    elif /usr/libexec/java_home -v 17 -a $(uname -m) -F 2>/dev/null; then
+        export JAVA_HOME=$(/usr/libexec/java_home -v 17 -a arm64 -F | head -n1)
+    else
+        echo "JDK 11 or 17 not found, trying to build with default JDK..."
+    fi 
+fi
+
 mvn -f pom-first.xml clean install && mvn clean install
+
+for f in product/target/products/ApacheDirectoryStudio-*-SNAPSHOT-*; do 
+    mv -v $f ${f/-SNAPSHOT/.v$(date +%Y%m%d)}; 
+done
+
+# build disk images for macOS
+cd installers/macos/src/dmg/
+./createDMG.sh
+cd -
+
+# print build artifacts
+ls -l product/target/products/ApacheDirectoryStudio-*

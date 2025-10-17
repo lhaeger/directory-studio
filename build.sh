@@ -19,3 +19,13 @@
 # This script do a full build of Studio (including the MANIFEST generation and the P2 local repository construction)
 
 mvn -f pom-first.xml clean install && mvn clean install
+
+for f in product/target/products/ApacheDirectoryStudio-*-SNAPSHOT-*; do 
+    mv -v $f ${f/SNAPSHOT/v$(date +%Y%m%d)}; 
+done
+
+# build disk images for macOS
+cd installers/macos/src/dmg/
+./createDMG.sh
+cd -
+ls -l product/target/products/ApacheDirectoryStudio-*
